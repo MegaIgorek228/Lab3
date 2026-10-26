@@ -9,8 +9,8 @@
 #include "timsort.h"
 
 static int cmp_int(const void *a, const void *b) {
-    int x = *(const int *)a;
-    int y = *(const int *)b;
+    int x = *(const int *) a;
+    int y = *(const int *) b;
     return (x > y) - (x < y);
 }
 
@@ -22,7 +22,7 @@ typedef struct {
 } task_t;
 
 static void *worker(void *arg) {
-    task_t *t = (task_t *)arg;
+    task_t *t = (task_t *) arg;
     sem_wait(t->sem);
     timsort(t->arr + t->start, t->end - t->start, sizeof(int), cmp_int);
     sem_post(t->sem);
@@ -37,15 +37,28 @@ int main(int argc, char *argv[]) {
         if (strcmp(argv[i], "-t") == 0 && i + 1 < argc)
             num_threads = atoi(argv[++i]);
         else if (strcmp(argv[i], "-n") == 0 && i + 1 < argc)
-            array_size = (size_t)atoll(argv[++i]);
+            array_size = (size_t) atoll(argv[++i]);
     }
 
     printf("Потоков: %d, размер массива: %zu\n", num_threads, array_size);
 
-    int *arr = malloc(array_size * sizeof(int));
-    if (!arr) { perror("malloc"); return 1; }
+    if ((int)array_size == 0) {
+        printf("длинна массива = 0");
+        return 0;
+    }
 
-    srand((unsigned)time(NULL));
+    if (num_threads > (int)array_size) {
+        num_threads = (int)array_size;
+        // printf("ограничение потоков\n");
+    }
+
+    int *arr = malloc(array_size * sizeof(int));
+    if (!arr) {
+        perror("malloc");
+        return 1;
+    }
+
+    srand((unsigned) time(NULL));
     for (size_t i = 0; i < array_size; i++)
         arr[i] = rand() % 10000000;
 
@@ -57,7 +70,10 @@ int main(int argc, char *argv[]) {
 
     pthread_t *threads = malloc(num_threads * sizeof(pthread_t));
     task_t *tasks = malloc(num_threads * sizeof(task_t));
-    if (!threads || !tasks) { perror("malloc threads"); return 1; }
+    if (!threads || !tasks) {
+        perror("malloc threads");
+        return 1;
+    }
 
     size_t chunk = array_size / num_threads;
 
@@ -87,9 +103,8 @@ int main(int argc, char *argv[]) {
     }
 
     clock_gettime(CLOCK_MONOTONIC, &t2);
-    double elapsed = (t2.tv_sec - t1.tv_sec) + (t2.tv_nsec - t1.tv_nsec) / 1e9;
 
-    printf("Время: %.4f секунд\n", elapsed);
+    printf("Время: %.4f секунд\n", (t2.tv_sec - t1.tv_sec) + (t2.tv_nsec - t1.tv_nsec) / 1e9);
 
     // Проверка сортировки
     int is_sorted = 1;
